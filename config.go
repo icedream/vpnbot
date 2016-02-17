@@ -78,7 +78,7 @@ func (c Config) Save(configPath string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(configPath, contents, 0750)
+	return ioutil.WriteFile(configPath, contents, 0640)
 }
 
 func (c Config) Validate() error {
