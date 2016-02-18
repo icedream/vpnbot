@@ -31,3 +31,7 @@ _testmain.go
 
 *.test
 *.prof
+
+# IDEA project files
+.idea
+*.iml
