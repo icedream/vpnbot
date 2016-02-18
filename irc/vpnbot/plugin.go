@@ -72,7 +72,7 @@ func New(b bot.Bot, whoisPlugin *whois.Plugin, tempbanPlugin *tempban.Plugin, ni
 			} else {
 				for i, ban := range bans {
 					b.Privmsg(e.Target,
-						fmt.Sprintf("%4v. \x02%-31v\x02 (\x02%v\x02, expires \x02%v\x02)",
+						fmt.Sprintf("%4v. \x02%-41v\x02 (\x02%v\x02, expires \x02%v\x02)",
 							i+1, ban.Hostmask, ban.Reason,
 							humanize.Time(ban.ExpirationTime)))
 				}
