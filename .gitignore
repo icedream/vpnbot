@@ -11,6 +11,7 @@ target_*
 
 # Configuration files
 *.yml
+*.json
 
 # Folders
 _obj
