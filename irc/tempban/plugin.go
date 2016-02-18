@@ -53,6 +53,7 @@ func New(b bot.Bot, isupportPlugin *isupport.Plugin, modePlugin *mode.Plugin) *P
 			}
 
 			plugin.loadBans(line.Args[0])
+			go plugin.dumpBans(line.Args[0])
 		})
 
 	return plugin
@@ -149,6 +150,48 @@ func (p *Plugin) syncBans(target string) {
 	// Load temporary bans from this file
 	if err := p.ensureTemporaryBanManager(target).Export(f); err != nil {
 		logging.Warn("Could not save temporary bans: %v", err.Error())
+	}
+}
+
+func (p *Plugin) dumpBans(target string) {
+	num := 0
+
+	// Fetch ban list
+	banlist, err := p.mode.Bans(target)
+	if err != nil {
+		logging.Warn("Could not fetch ban list, old bans won't get handled")
+		return
+	}
+
+	tbmgr := p.ensureTemporaryBanManager(target)
+
+	// Save only bans from us
+	for _, ban := range banlist {
+		if ban.Nick != p.bot.Me().Nick {
+			// Not a ban from us (going by the nickname at least)
+			continue
+		}
+
+		if _, ok := tbmgr.Get(ban.Hostmask); ok {
+			// We already have this ban saved
+			continue
+		}
+
+		if err := tbmgr.Add(NewTemporaryBan(
+			ban.Nick,
+			ban.Hostmask,
+			ban.Src,
+			"Migrated old ban",
+			48*time.Hour+ban.Timestamp.Sub(time.Now()))); err != nil {
+			logging.Warn("Could not migrate ban on %v: %v", ban.Hostmask, err)
+		}
+
+		num++
+	}
+
+	if num > 0 {
+		p.syncBans(target)
+		logging.Info("Migrated %v bans", num)
 	}
 }
 
