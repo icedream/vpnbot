@@ -48,7 +48,7 @@ func (tbmgr *TemporaryBanManager) Add(ban TemporaryBan) error {
 		return ErrHostmaskAlreadyBanned
 	}
 	tbmgr.data.Bans = append(tbmgr.data.Bans, ban)
-	if tbmgr.DisableExpiry {
+	if !tbmgr.DisableExpiry {
 		tbmgr.handleBan(&ban)
 	}
 	return nil
@@ -118,8 +118,10 @@ func (tbmgr *TemporaryBanManager) Import(r io.Reader) error {
 	}
 
 	// Run background handler for each temporary ban
-	for _, ban := range tbmgr.data.Bans {
-		tbmgr.handleBan(&ban)
+	if !tbmgr.DisableExpiry {
+		for _, ban := range tbmgr.data.Bans {
+			tbmgr.handleBan(&ban)
+		}
 	}
 
 	return nil
