@@ -59,6 +59,8 @@ func New(b bot.Bot, isupportPlugin *isupport.Plugin) *Plugin {
 				return
 			}
 
+			isChannel, _, _ := isupportPlugin.IsChannel(line.Args[0])
+
 			modes := line.Args[1]
 			var action ModeChangeAction
 			hasAction := false
@@ -97,32 +99,34 @@ func New(b bot.Bot, isupportPlugin *isupport.Plugin) *Plugin {
 						HasArgument: false,
 					}
 
-					// Find the mode in ISupports
-					for _, knownMode := range knownModes {
-						if knownMode.Mode != mode {
-							continue
-						}
-
-						switch knownMode.Type {
-						case isupport.ChanModeType_List,
-							isupport.ChanModeType_Setting:
-							// Always has a parameter
-							arg, ok := getParam()
-							if !ok {
-								return // invalid syntax
+					if isChannel {
+						// Find the mode in ISupports
+						for _, knownMode := range knownModes {
+							if knownMode.Mode != mode {
+								continue
 							}
-							modeChange.Argument = arg
-						case isupport.ChanModeType_Setting_ParamWhenSet:
-							// Only has parameter when set
-							if action == ModeChangeAction_Added {
+
+							switch knownMode.Type {
+							case isupport.ChanModeType_List,
+								isupport.ChanModeType_Setting:
+								// Always has a parameter
 								arg, ok := getParam()
 								if !ok {
 									return // invalid syntax
 								}
 								modeChange.Argument = arg
+							case isupport.ChanModeType_Setting_ParamWhenSet:
+								// Only has parameter when set
+								if action == ModeChangeAction_Added {
+									arg, ok := getParam()
+									if !ok {
+										return // invalid syntax
+									}
+									modeChange.Argument = arg
+								}
+							case isupport.ChanModeType_Setting_NoParam:
+								// No parameter
 							}
-						case isupport.ChanModeType_Setting_NoParam:
-							// No parameter
 						}
 					}
 
