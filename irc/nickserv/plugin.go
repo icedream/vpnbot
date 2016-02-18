@@ -70,9 +70,8 @@ func New(b bot.Bot, modePlugin *mode.Plugin) *Plugin {
 			}
 
 			// We have logged in
-			for _, channel := range plugin.Channels {
-				b.Join(channel)
-			}
+			// TODO - Allow for channels to have a password
+			b.Conn().Raw(client.JOIN + " " + strings.Join(plugin.Channels, " "))
 		})
 
 	return plugin
