@@ -204,6 +204,12 @@ func (p *Plugin) Bans(target string) (banlist []Ban, err error) {
 			doneChan <- nil
 		}).Remove()
 
+	// Temporarily disable flood protection
+	confFlood := &p.bot.Conn().Config().Flood
+	oldFloodValue := *confFlood
+	*confFlood = true
+	defer func() { *confFlood = oldFloodValue }()
+
 	p.bot.Conn().Mode(target, "+b")
 	err = <-doneChan
 	return
