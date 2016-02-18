@@ -7,37 +7,37 @@ import (
 )
 
 type V1NetworkConfig struct {
-	Host string `host`
-	Port uint16 `port`
+	Host string `json:"host"`
+	Port uint16 `json:"port"`
 }
 
 type V1IRCConfig struct {
-	Nick          string   `nick`
-	Pass          string   `pass`
-	Ident         string   `ident`
-	Realname      string   `realname`
-	Channels      []string `channels`
-	Owner         string   `owner`
-	AcceptInvites *bool    `accept-invites`
+	Nick          string   `json:"nick"`
+	Pass          string   `json:"pass"`
+	Ident         string   `json:"ident"`
+	Realname      string   `json:"realname"`
+	Channels      []string `json:"channels"`
+	Owner         string   `json:"owner"`
+	AcceptInvites *bool    `json:"accept-invites"`
 }
 
 type V1NSConfig struct {
-	User string `user`
-	Pass string `pass`
+	User string `json:"user`
+	Pass string `json:"pass`
 }
 
 type V1BlacklistConfig struct {
-	Domains       []string `domains`
-	EnableJoewein bool     `enable-joewein`
+	Domains       []string `json:"domains"`
+	EnableJoewein bool     `json:"enable-joewein"`
 }
 
 // This configuration struct represents the configuration layout from the old
 // bot (that was written in Node.js).
 type V1Config struct {
-	Network   V1NetworkConfig   `network`
-	IRC       V1IRCConfig       `irc`
-	NickServ  V1NSConfig        `nickserv`
-	Blacklist V1BlacklistConfig `blacklist`
+	Network   V1NetworkConfig   `json:"network"`
+	IRC       V1IRCConfig       `json:"irc"`
+	NickServ  V1NSConfig        `json:"nickserv"`
+	Blacklist V1BlacklistConfig `json:"blacklist"`
 }
 
 func LoadV1Config(configPath string) (c V1Config, err error) {
