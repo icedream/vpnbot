@@ -1,6 +1,10 @@
 package mode
 
 import (
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/StalkR/goircbot/bot"
 	"github.com/fluffle/goirc/client"
 	"github.com/icedream/vpnbot/irc/isupport"
@@ -147,6 +151,62 @@ func New(b bot.Bot, isupportPlugin *isupport.Plugin) *Plugin {
 		})
 
 	return plugin
+}
+
+// Fetches the ban list for a channel.
+func (p *Plugin) Bans(target string) (banlist []Ban, err error) {
+	if ok, _, _ := p.isupport.IsChannel(target); !ok {
+		err = ErrNotAChannel
+		return
+	}
+
+	doneChan := make(chan error)
+
+	// NOTE - Rizon doesn't limit who can see the ban list based on my own few tests...
+
+	defer p.bot.HandleFunc("367",
+		func(c *client.Conn, line *client.Line) {
+			if len(line.Args) < 5 {
+				return // Invalid response
+			}
+			if line.Args[0] != c.Me().Nick {
+				return // Not for us
+			}
+			if !strings.EqualFold(line.Args[1], target) {
+				return // Not the channel we searched for
+			}
+			hostmask, src, timestampStr := line.Args[2], line.Args[3], line.Args[4]
+			timestampUnix, err := strconv.ParseInt(timestampStr, 10, 64)
+			if err != nil {
+				return // Invalid timestamp string
+			}
+			banlist = append(banlist, Ban{
+				Hostmask:  hostmask,
+				Src:       src,
+				User:      splitHostmask(src),
+				Timestamp: time.Unix(timestampUnix, 0),
+			})
+		}).Remove()
+
+	defer p.bot.HandleFunc("368",
+		func(c *client.Conn, line *client.Line) {
+			if len(line.Args) < 2 {
+				return // Invalid response
+			}
+			if line.Args[0] != c.Me().Nick {
+				return // Not for us
+			}
+			if !strings.EqualFold(line.Args[1], target) {
+				return // Not the channel we searched for
+			}
+
+			// End of channel ban list, we're done
+			doneChan <- nil
+		}).Remove()
+
+	p.bot.Conn().Mode(target, "+b")
+	err = <-doneChan
+	return
 }
 
 // Registers this plugin with the bot.
