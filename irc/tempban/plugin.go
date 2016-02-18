@@ -216,6 +216,10 @@ func (p *Plugin) dumpBans(target string) {
 	}
 }
 
+func (p *Plugin) Bans(target string) []TemporaryBan {
+	return p.ensureTemporaryBanManager(target).GetAll()
+}
+
 func (p *Plugin) Ban(target string, ban TemporaryBan) error {
 	if ok, _, _ := p.isupport.IsChannel(target); !ok {
 		return ErrNotAChannel // not a channel

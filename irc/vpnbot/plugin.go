@@ -50,6 +50,36 @@ func New(b bot.Bot, whoisPlugin *whois.Plugin, tempbanPlugin *tempban.Plugin, ni
 
 	b.Conn().HandleFunc("join", plugin.OnJoin)
 
+	b.Commands().Add("listbans", bot.Command{
+		Hidden: true,
+		Pub:    true,
+		Help:   "(only admins) Lists bans the bot set in a channel.",
+		Handler: func(e *bot.Event) {
+			if !plugin.isAdmin(e.Line.Src) {
+				return
+			}
+
+			channel := e.Args
+			if len(channel) < 1 {
+				b.Privmsg(e.Target, "Need a channel to query.")
+				return
+			}
+
+			bans := tempbanPlugin.Bans(channel)
+			if len(bans) == 0 {
+				b.Privmsg(e.Target, fmt.Sprintf("No bans set for \x02%v\x02.",
+					channel))
+			} else {
+				for i, ban := range bans {
+					b.Privmsg(e.Target,
+						fmt.Sprintf("%4v. \x02%-31v\x02 (\x02%v\x02, expires \x02%v\x02)",
+							i+1, ban.Hostmask, ban.Reason,
+							humanize.Time(ban.ExpirationTime)))
+				}
+			}
+		},
+	})
+
 	b.Commands().Add("globalban", bot.Command{
 		Hidden: true,
 		Pub:    true,
