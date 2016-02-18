@@ -39,7 +39,8 @@ var loadedConfiguration = defaultConfiguration
 // Command line flags
 var configPath = flag.String("config", "config.yml",
 	"Path to the configuration file. Configuration file must be in YAML format.")
-
+var migratePath = flag.String("migrate", "",
+	"If given with a path, will migrate from version 1 of VPN bot to the new configuration format.")
 var generateDefault = flag.Bool("generate", false,
 	"Generates a default configuration and saves it at the path given via -config.")
 
@@ -63,6 +64,29 @@ func main() {
 			os.Exit(1)
 		}
 		logger.Info("Saved default configuration.")
+		os.Exit(0)
+	}
+
+	// Check if we're supposed to migrate an old config
+	if *migratePath != "" {
+		logger.Debug("Migrating old configuration...")
+		if c, err := LoadV1Config(*migratePath); err != nil {
+			logger.Error("Failed to load old configuration: %v", err)
+			os.Exit(1)
+		} else {
+			newC := c.Migrate()
+			if err := newC.Save(*configPath); err != nil {
+				logger.Error("Migration failed: %v", err)
+				os.Exit(1)
+			}
+			if err := newC.Validate(); err != nil {
+				logger.Warn("Migration successful but found errors while "+
+					"validating the new configuration, you should fix this before "+
+					"running the bot: %v", err)
+				os.Exit(2)
+			}
+		}
+		logger.Info("Migration successful.")
 		os.Exit(0)
 	}
 
