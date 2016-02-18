@@ -4,7 +4,8 @@ import (
 	"encoding/gob"
 	"errors"
 	"io"
-	"sync"
+
+	"github.com/icedream/vpnbot/debug/sync"
 
 	"github.com/fluffle/goirc/logging"
 )
