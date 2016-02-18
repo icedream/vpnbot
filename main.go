@@ -125,6 +125,7 @@ func main() {
 				err, string(debug.Stack()))
 		}
 	}
+	b.Conn().Config().Pass = loadedConfiguration.Server.Password
 	if loadedConfiguration.Name != "" {
 		b.Conn().Config().Me.Name = loadedConfiguration.Name
 	}

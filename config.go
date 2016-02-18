@@ -24,8 +24,9 @@ const (
 )
 
 type ServerConfig struct {
-	Address string "Address"
-	SSL     bool   "SSL"
+	Address  string "Address"
+	Password string "Password"
+	SSL      bool   "SSL"
 }
 
 type NickServConfig struct {
