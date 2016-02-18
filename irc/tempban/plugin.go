@@ -190,16 +190,14 @@ func (p *Plugin) Ban(target string, ban TemporaryBan) error {
 			}
 		}).Remove()
 
-	for {
-		// -b+b will definitely trigger a MODE +b response if the ban can be set
-		p.bot.Mode(target, "-b+b", ban.Hostmask, ban.Hostmask)
-		select {
-		case err := <-banSetChan:
-			close(banSetChan)
-			banSetChan = nil
-			if err != nil {
-				return err
-			}
+	// -b+b will definitely trigger a MODE +b response if the ban can be set
+	p.bot.Mode(target, "-b+b", ban.Hostmask, ban.Hostmask)
+	select {
+	case err := <-banSetChan:
+		close(banSetChan)
+		banSetChan = nil
+		if err != nil {
+			return err
 		}
 	}
 
