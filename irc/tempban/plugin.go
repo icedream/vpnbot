@@ -60,12 +60,6 @@ func New(b bot.Bot, isupportPlugin *isupport.Plugin, modePlugin *mode.Plugin) *P
 
 func (p *Plugin) getTempbansFilename(target string) string {
 	hash := sha256.New()
-	hash.Write([]byte(p.bot.Conn().Config().Server))
-	if p.bot.Conn().Config().SSL {
-		hash.Write([]byte{1})
-	} else {
-		hash.Write([]byte{0})
-	}
 	hash.Write([]byte(strings.ToLower(target)))
 	return fmt.Sprintf("target_%x.tempban", string(hash.Sum([]byte{})))
 }
