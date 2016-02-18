@@ -175,6 +175,17 @@ func (p *Plugin) Ban(target string, ban TemporaryBan) error {
 			}
 			banSetChan <- errors.New("Missing channel operator privileges")
 		}).Remove()
+	defer p.bot.HandleFunc("478", // ERR_BANLISTFULL
+		func(conn *client.Conn, line *client.Line) {
+			if banSetChan == nil {
+				return
+			}
+			if line.Args[0] != conn.Me().Nick ||
+				line.Args[1] != target {
+				return
+			}
+			banSetChan <- errors.New("The ban list is full")
+		}).Remove()
 	defer p.mode.HandleFunc("+b",
 		func(e *mode.ModeChangeEvent) {
 			if banSetChan == nil {
