@@ -62,6 +62,7 @@ func (p *Plugin) ensureTemporaryBanManager(target string) (tbmgr *tempban.Tempor
 	tbmgr, ok := p.tbmgr[target]
 	if !ok {
 		tbmgr = tempban.NewTemporaryBanManager()
+		tbmgr.DisableExpiry = true
 		p.tbmgr[target] = tbmgr
 	}
 	return

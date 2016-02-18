@@ -17,6 +17,8 @@ type TemporaryBanManager struct {
 
 	banRemovalTrigger map[TemporaryBan]chan interface{}
 	BanExpiredFunc    func(TemporaryBan)
+
+	DisableExpiry bool
 }
 
 func (tbmgr *TemporaryBanManager) onBanExpired(ban TemporaryBan) {
@@ -46,7 +48,9 @@ func (tbmgr *TemporaryBanManager) Add(ban TemporaryBan) error {
 		return ErrHostmaskAlreadyBanned
 	}
 	tbmgr.data.Bans = append(tbmgr.data.Bans, ban)
-	tbmgr.handleBan(&ban)
+	if tbmgr.DisableExpiry {
+		tbmgr.handleBan(&ban)
+	}
 	return nil
 }
 
