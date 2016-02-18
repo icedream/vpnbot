@@ -96,6 +96,11 @@ func (c Config) Validate() error {
 		return errors.New("You need to set a server address in the configuration.")
 	}
 
+	// Admins
+	if c.Admins == nil {
+		c.Admins = []string{}
+	}
+
 	// AutoJoinOnInvite
 	c.AutoJoinOnInvite = InviteBehavior(strings.ToLower(string(c.AutoJoinOnInvite)))
 	switch c.AutoJoinOnInvite {
@@ -106,6 +111,11 @@ func (c Config) Validate() error {
 		c.AutoJoinOnInvite = InviteBehaviorOnce
 	default:
 		return errors.New("AutoJoinOnInvite must be set to either always, ignore or once (default).")
+	}
+
+	// Channels
+	if c.Channels == nil {
+		c.Channels = []string{}
 	}
 
 	return nil
