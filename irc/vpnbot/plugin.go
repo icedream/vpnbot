@@ -329,21 +329,24 @@ func (plugin *Plugin) banGlobal(nick string, hostmask string, reason string, dur
 	*confFlood = true
 	defer func() { *confFlood = oldFloodValue }()
 
+	ban := tempban.NewTemporaryBan(
+		nick,
+		hostmask,
+		plugin.bot.Me().Name,
+		reason,
+		duration)
+
 	for _, channel := range plugin.bot.Channels() {
+		var err error
 		if nick != "" {
-			plugin.tempban.Kickban(channel, tempban.NewTemporaryBan(
-				nick,
-				hostmask,
-				plugin.bot.Me().Name,
-				reason,
-				duration))
+			err = plugin.tempban.Kickban(channel, ban)
 		} else {
-			plugin.tempban.Ban(channel, tempban.NewTemporaryBan(
-				"",
-				hostmask,
-				plugin.bot.Me().Name,
-				reason,
-				duration))
+			err = plugin.tempban.Ban(channel, ban)
+		}
+		if err != nil {
+			logging.Warn("Couldn't ban %v from %v: %v", ban.Nick, target,
+				err.Error())
+			p.bot.Privmsg(target, "I can't ban %v. %v.", ban.Nick, err.Error())
 		}
 	}
 }
