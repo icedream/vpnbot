@@ -4,9 +4,11 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/StalkR/goircbot/bot"
@@ -14,6 +16,7 @@ import (
 	"github.com/fluffle/goirc/logging"
 	"github.com/icedream/vpnbot/irc/isupport"
 	"github.com/icedream/vpnbot/irc/mode"
+	"github.com/icedream/vpnbot/irc/util"
 
 	"github.com/dustin/go-humanize"
 )
@@ -220,74 +223,140 @@ func (p *Plugin) Bans(target string) []TemporaryBan {
 	return p.ensureTemporaryBanManager(target).GetAll()
 }
 
-func (p *Plugin) Ban(target string, ban TemporaryBan) error {
+// Sets multiple bans in a target channel.
+//
+// Returns an error slice of the same amount of elements as bans
+// passed in, each error corresponding to the respective ban by index.
+//
+// All errors will be ErrNotAChannel if the target is not a valid channel.
+func (p *Plugin) Ban(target string, bans ...TemporaryBan) (retval []error) {
+	retval = make([]error, len(bans))
+
 	if ok, _, _ := p.isupport.IsChannel(target); !ok {
-		return ErrNotAChannel // not a channel
+		for index, _ := range retval {
+			retval[index] = ErrNotAChannel
+		}
+		return // not a channel
 	}
 
-	banSetChan := make(chan error)
+	modesNative, ok := p.isupport.Supports().Modes()
+	if !ok {
+		modesNative = 1
+	}
+	modeBuf := util.NewModeChangeBuffer(p.bot.Conn(), modesNative)
+
+	// NOTE - We assume that responses to bans get returned in the same order
+	// as we send out the ban requests... this may very well go wrong!
+
+	index := 0
+	banSetChans := []chan error{}
+	banSetMutex := &sync.Mutex{}
+
+	// Populate banSetChans with channels to send to
+	// TODO - There probably is a more efficient way to do this
+	for _, _ = range bans {
+		banSetChans = append(banSetChans, make(chan error))
+	}
+
+	// TODO - This will very well fail on multiple async calls to this method
+	// on the same target while both are waiting for replies as the index will
+	// get bigger than the length of bans.
+	// We also can not use a map by hostmask as some of these replies are far
+	// too vague and don't provide anything but our nickname and the error
+	// message.
+	// Sometimes I really hate the IRC protocol because of things like that...
+
 	defer p.bot.HandleFunc("482", // ERR_CHANOPRIVSNEEDED
 		func(conn *client.Conn, line *client.Line) {
-			if banSetChan == nil {
-				return
-			}
 			if line.Args[0] != conn.Me().Nick ||
 				line.Args[1] != target {
 				return
 			}
-			banSetChan <- errors.New("Missing channel operator privileges")
+
+			banSetMutex.Lock()
+			defer banSetMutex.Unlock()
+			for i := index; i < int(math.Min(float64(len(banSetChans)), float64(uint64(index)+modesNative))); i++ {
+				banSetChans[index] <- errors.New("Missing channel operator privileges")
+			}
+
+			// This error message counts for all bans sent in the same request
+			// line.
+			index += int(modesNative)
 		}).Remove()
 	defer p.bot.HandleFunc("478", // ERR_BANLISTFULL
 		func(conn *client.Conn, line *client.Line) {
-			if banSetChan == nil {
-				return
-			}
 			if line.Args[0] != conn.Me().Nick ||
 				line.Args[1] != target {
 				return
 			}
-			banSetChan <- errors.New("The ban list is full")
+
+			banSetMutex.Lock()
+			defer banSetMutex.Unlock()
+			for i := index; i < int(math.Min(float64(len(banSetChans)), float64(uint64(index)+modesNative))); i++ {
+				banSetChans[index] <- errors.New("The ban list is full")
+			}
+
+			// This error message counts for all bans sent in the same request
+			// line.
+			index += int(modesNative)
 		}).Remove()
 	defer p.mode.HandleFunc("+b",
 		func(e *mode.ModeChangeEvent) {
-			if banSetChan == nil {
+			if !strings.EqualFold(e.Target, target) {
 				return
 			}
-			if strings.EqualFold(e.Target, target) {
-				banSetChan <- nil
-			}
+
+			banSetMutex.Lock()
+			defer banSetMutex.Unlock()
+
+			banSetChans[index] <- nil
+
+			index++
 		}).Remove()
 
 	// -b+b will definitely trigger a MODE +b response if the ban can be set
-	p.bot.Mode(target, "-b+b", ban.Hostmask, ban.Hostmask)
-	select {
-	case err := <-banSetChan:
-		close(banSetChan)
-		banSetChan = nil
-		if err != nil {
-			return err
+	for _, ban := range bans {
+		modeBuf.Mode(target, "-b", ban.Hostmask)
+		modeBuf.Mode(target, "+b", ban.Hostmask)
+	}
+	modeBuf.Flush()
+
+	// Now wait for the responses
+	anyBanAppliedCorrectly := false
+	for i, ch := range banSetChans {
+		select {
+		case err := <-ch:
+			close(ch)
+			retval[i] = err
+			if err == nil {
+				p.ensureTemporaryBanManager(target).Add(bans[i])
+				anyBanAppliedCorrectly = true
+			}
 		}
 	}
 
-	p.ensureTemporaryBanManager(target).Add(ban)
-	p.syncBans(target)
+	if anyBanAppliedCorrectly {
+		p.syncBans(target)
+	}
 
-	return nil
+	return
 }
 
-func (p *Plugin) Kickban(target string, ban TemporaryBan) error {
-	if ok, _, _ := p.isupport.IsChannel(target); !ok {
-		return ErrNotAChannel // not a channel
+func (p *Plugin) Kickban(target string, bans ...TemporaryBan) (errs []error) {
+	errs = p.Ban(target, bans...)
+	for index, ban := range bans {
+		err := errs[index]
+		reason := ban.Reason
+		if err == nil {
+			reason = fmt.Sprintf("Banned until %v (%v)",
+				humanize.Time(ban.ExpirationTime),
+				ban.Reason)
+		}
+		if ban.Nick != "" && err != ErrNotAChannel {
+			p.bot.Conn().Kick(target, ban.Nick, reason)
+		}
 	}
-	if err := p.Ban(target, ban); err != nil {
-		p.bot.Conn().Kick(target, ban.Nick,
-			fmt.Sprintf("Banned until %v (%v)",
-				humanize.Time(ban.ExpirationTime), ban.Reason))
-	} else {
-		p.bot.Conn().Kick(target, ban.Nick, ban.Reason)
-		return err
-	}
-	return nil
+	return
 }
 
 func Register(b bot.Bot, isupportPlugin *isupport.Plugin, modePlugin *mode.Plugin) *Plugin {

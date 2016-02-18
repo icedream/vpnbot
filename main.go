@@ -177,7 +177,8 @@ func main() {
 		tempbanPlugin := tempban.Register(b, isupportPlugin, modePlugin)
 		tempbanPlugin.OldHostmasks = loadedConfiguration.OldHostmasks
 		whoisPlugin := whois.Register(b, isupportPlugin)
-		vpnbotPlugin := vpnbot.Register(b, whoisPlugin, tempbanPlugin, nickservPlugin)
+		vpnbotPlugin := vpnbot.Register(b, whoisPlugin, isupportPlugin,
+			tempbanPlugin, nickservPlugin)
 		vpnbotPlugin.Admins = loadedConfiguration.Admins
 
 		// This is to update the configuration when the bot joins channels
