@@ -41,10 +41,14 @@ func (tbmgr *TemporaryBanManager) GetAll() []TemporaryBan {
 	return tbmgr.data.Bans
 }
 
-func (tbmgr *TemporaryBanManager) Get(hostmask string) (foundBan TemporaryBan, ok bool) {
+func (tbmgr *TemporaryBanManager) Get(hostmask string) (TemporaryBan, bool) {
 	tbmgr.dataSync.RLock()
 	defer tbmgr.dataSync.RUnlock()
 
+	return tbmgr.getNoLock(hostmask)
+}
+
+func (tbmgr *TemporaryBanManager) getNoLock(hostmask string) (foundBan TemporaryBan, ok bool) {
 	for _, ban := range tbmgr.data.Bans {
 		if ban.Hostmask == hostmask {
 			foundBan = ban
@@ -59,7 +63,7 @@ func (tbmgr *TemporaryBanManager) Add(ban TemporaryBan) error {
 	tbmgr.dataSync.Lock()
 	defer tbmgr.dataSync.Unlock()
 
-	if _, ok := tbmgr.Get(ban.Hostmask); ok {
+	if _, ok := tbmgr.getNoLock(ban.Hostmask); ok {
 		return ErrHostmaskAlreadyBanned
 	}
 	tbmgr.data.Bans = append(tbmgr.data.Bans, ban)
@@ -89,15 +93,13 @@ func (tbmgr *TemporaryBanManager) Remove(hostmask string) (foundBan TemporaryBan
 	tbmgr.dataSync.Lock()
 	defer tbmgr.dataSync.Unlock()
 
-	if _, ok := tbmgr.Get(hostmask); ok {
-		for index, ban := range tbmgr.data.Bans {
-			if ban.Hostmask == hostmask {
-				close(tbmgr.banRemovalTrigger[ban])
-				tbmgr.data.Bans = append(tbmgr.data.Bans[0:index], tbmgr.data.Bans[index+1:]...)
-				foundBan = ban
-				deleted = true
-				return
-			}
+	for index, ban := range tbmgr.data.Bans {
+		if ban.Hostmask == hostmask {
+			close(tbmgr.banRemovalTrigger[ban])
+			tbmgr.data.Bans = append(tbmgr.data.Bans[0:index], tbmgr.data.Bans[index+1:]...)
+			foundBan = ban
+			deleted = true
+			return
 		}
 	}
 	return
