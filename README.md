@@ -21,6 +21,27 @@ Make sure your GOPATH is set properly and that you have PATH also pointing at yo
 
 # How to run this
 
+## Using Docker
+
+Docker allows an easy, isolated setup of vpnbot.
+
+1. Make sure you have Docker installed properly on your system.
+2. If you haven't yet, generate a configuration with this command: `docker run --rm -v /path/to/your/data:/data icedream/vpnbot vpnbot -generate`
+3. Edit the resulting `config.yml` to your needs, you'll probably need root permissions for this.
+4. Start up a container with Docker like this: `docker run --rm -d -v /path/to/your/data:/data icedream/vpnbot`
+5. Check if the bot started up correctly using `docker logs <printed container ID here>`.
+
+Alternatively, after step 3 you can use `docker-compose` with a YAML configuration like this:
+
+```yaml
+bot:
+  image: icedream/vpnbot
+  volumes:
+  - "./data:/data"
+```
+
+## Manually
+
 First, generate a default configuration in a new folder:
 
 ```
