@@ -215,13 +215,19 @@ func (p *Plugin) Ban(target string, ban TemporaryBan) error {
 	return nil
 }
 
-func (p *Plugin) Kickban(target string, ban TemporaryBan) {
+func (p *Plugin) Kickban(target string, ban TemporaryBan) error {
 	if ok, _, _ := p.isupport.IsChannel(target); !ok {
 		return // not a channel
 	}
-	p.Ban(target, ban)
-	p.bot.Conn().Kick(target, ban.Nick,
-		fmt.Sprintf("Banned until %v (%v)", humanize.Time(ban.ExpirationTime), ban.Reason))
+	if err := p.Ban(target, ban); err != nil {
+		p.bot.Conn().Kick(target, ban.Nick,
+			fmt.Sprintf("Banned until %v (%v)",
+				humanize.Time(ban.ExpirationTime), ban.Reason))
+	} else {
+		p.bot.Conn().Kick(target, ban.Nick, ban.Reason)
+		return err
+	}
+	return nil
 }
 
 func Register(b bot.Bot, isupportPlugin *isupport.Plugin, modePlugin *mode.Plugin) *Plugin {
