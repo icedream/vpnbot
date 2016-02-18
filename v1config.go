@@ -73,14 +73,15 @@ func (c V1Config) Migrate() (cfg Config) {
 	// Ident
 	cfg.Ident = c.IRC.Ident
 
+	// Name
+	cfg.Name = c.IRC.Realname
+
 	// Nick
 	cfg.Nick = c.IRC.Nick
 
 	// NickServ
 	cfg.NickServ.Username = c.NickServ.User
 	cfg.NickServ.Password = c.NickServ.Pass
-
-	// TODO - Realname
 
 	// Server
 	cfg.Server.Address = fmt.Sprintf("%v:%v", c.Network.Host, c.Network.Port)

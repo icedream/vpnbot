@@ -122,6 +122,9 @@ func main() {
 				err, string(debug.Stack()))
 		}
 	}
+	if loadedConfiguration.Name != "" {
+		b.Conn().Config().Me.Name = loadedConfiguration.Name
+	}
 
 	// Load plugins
 	// TODO - Move this into its own little intelligent loader struct, maybe.

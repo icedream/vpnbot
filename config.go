@@ -43,6 +43,9 @@ type Config struct {
 	// The ident (username) the bot uses.
 	Ident string "Ident"
 
+	// The real name the bot uses.
+	Name string "Name"
+
 	// The full exact hostmask of admins that can control the bot.
 	Admins []string "Admins"
 
