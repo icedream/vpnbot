@@ -353,12 +353,6 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 }
 
 func (plugin *Plugin) banGlobal(nick string, hostmask string, reason string, duration time.Duration) {
-	// Temporarily disable flood protection
-	confFlood := &plugin.bot.Conn().Config().Flood
-	oldFloodValue := *confFlood
-	*confFlood = true
-	defer func() { *confFlood = oldFloodValue }()
-
 	ban := tempban.NewTemporaryBan(
 		nick,
 		hostmask,
@@ -385,12 +379,6 @@ func (plugin *Plugin) banGlobal(nick string, hostmask string, reason string, dur
 }
 
 func (plugin *Plugin) unbanGlobal(hostmask string) {
-	// Temporarily disable flood protection
-	confFlood := &plugin.bot.Conn().Config().Flood
-	oldFloodValue := *confFlood
-	*confFlood = true
-	defer func() { *confFlood = oldFloodValue }()
-
 	for _, channel := range plugin.bot.Channels() {
 		// -b will get sent back by the server and then picked up by our mode
 		// changing listener that we hooked in the New() method.

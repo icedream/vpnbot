@@ -175,12 +175,6 @@ func (p *Plugin) WhoIs(nick string) (resp *WhoIsResponse, err error) {
 			close(whoisCompletionChan)
 		}).Remove()
 
-	// Temporarily disable flood protection
-	confFlood := &p.bot.Conn().Config().Flood
-	oldFloodValue := *confFlood
-	*confFlood = true
-	defer func() { *confFlood = oldFloodValue }()
-
 	p.bot.Conn().Whois(nick)
 	select {
 	case <-time.After(30 * time.Second):
