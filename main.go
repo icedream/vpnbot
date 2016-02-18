@@ -175,6 +175,7 @@ func main() {
 		adminplugin.Register(b, loadedConfiguration.Admins)
 		bots.Register(b, isupportPlugin)
 		tempbanPlugin := tempban.Register(b, isupportPlugin, modePlugin)
+		tempbanPlugin.OldHostmasks = loadedConfiguration.OldHostmasks
 		whoisPlugin := whois.Register(b, isupportPlugin)
 		vpnbotPlugin := vpnbot.Register(b, whoisPlugin, tempbanPlugin, nickservPlugin)
 		vpnbotPlugin.Admins = loadedConfiguration.Admins

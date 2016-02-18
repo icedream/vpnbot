@@ -19,18 +19,20 @@ import (
 )
 
 type Plugin struct {
-	bot      bot.Bot
-	tbmgr    map[string]*TemporaryBanManager
-	isupport *isupport.Plugin
-	mode     *mode.Plugin
+	bot          bot.Bot
+	tbmgr        map[string]*TemporaryBanManager
+	isupport     *isupport.Plugin
+	mode         *mode.Plugin
+	OldHostmasks []string
 }
 
 func New(b bot.Bot, isupportPlugin *isupport.Plugin, modePlugin *mode.Plugin) *Plugin {
 	plugin := &Plugin{
-		bot:      b,
-		tbmgr:    map[string]*TemporaryBanManager{},
-		isupport: isupportPlugin,
-		mode:     modePlugin,
+		bot:          b,
+		tbmgr:        map[string]*TemporaryBanManager{},
+		isupport:     isupportPlugin,
+		mode:         modePlugin,
+		OldHostmasks: []string{},
 	}
 
 	modePlugin.HandleFunc("-b", func(e *mode.ModeChangeEvent) {
