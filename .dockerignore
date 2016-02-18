@@ -1,0 +1,9 @@
+LICENSE*
+README*
+target_*
+vpnbot
+*.exe
+*.md
+*.yml
+.gitignore
+.gitmodules
