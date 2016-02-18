@@ -4,6 +4,8 @@ import (
 	"encoding/gob"
 	"errors"
 	"io"
+
+	"github.com/fluffle/goirc/logging"
 )
 
 var currentExportVersion = uint64(0x0)
@@ -123,6 +125,8 @@ func (tbmgr *TemporaryBanManager) Import(r io.Reader) error {
 			tbmgr.handleBan(&ban)
 		}
 	}
+
+	logging.Info("Imported %v bans.", len(tbmgr.data.Bans))
 
 	return nil
 }
