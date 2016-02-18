@@ -337,18 +337,20 @@ func (plugin *Plugin) banGlobal(nick string, hostmask string, reason string, dur
 		duration)
 
 	for _, channel := range plugin.bot.Channels() {
-		var err error
-		if nick != "" {
-			err = plugin.tempban.Kickban(channel, ban)
-		} else {
-			err = plugin.tempban.Ban(channel, ban)
-		}
-		if err != nil {
-			logging.Warn("Couldn't ban %v from %v: %v", ban.Nick, channel,
-				err.Error())
-			plugin.bot.Privmsg(channel, fmt.Sprintf("I can't ban %v. %v.",
-				ban.Nick, err.Error()))
-		}
+		go func() {
+			var err error
+			if nick != "" {
+				err = plugin.tempban.Kickban(channel, ban)
+			} else {
+				err = plugin.tempban.Ban(channel, ban)
+			}
+			if err != nil {
+				logging.Warn("Couldn't ban %v from %v: %v", ban.Nick, channel,
+					err.Error())
+				plugin.bot.Privmsg(channel, fmt.Sprintf("I can't ban %v. %v.",
+					ban.Nick, err.Error()))
+			}
+		}()
 	}
 }
 
