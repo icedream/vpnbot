@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"io"
+	"sync"
 
 	"github.com/fluffle/goirc/logging"
 )
@@ -16,6 +17,8 @@ type TemporaryBanExport struct {
 
 type TemporaryBanManager struct {
 	data *TemporaryBanExport
+
+	dataSync *sync.RWMutex
 
 	banRemovalTrigger map[TemporaryBan]chan interface{}
 	BanExpiredFunc    func(TemporaryBan)
@@ -31,10 +34,16 @@ func (tbmgr *TemporaryBanManager) onBanExpired(ban TemporaryBan) {
 }
 
 func (tbmgr *TemporaryBanManager) GetAll() []TemporaryBan {
+	tbmgr.dataSync.RLock()
+	defer tbmgr.dataSync.RUnlock()
+
 	return tbmgr.data.Bans
 }
 
 func (tbmgr *TemporaryBanManager) Get(hostmask string) (foundBan TemporaryBan, ok bool) {
+	tbmgr.dataSync.RLock()
+	defer tbmgr.dataSync.RUnlock()
+
 	for _, ban := range tbmgr.data.Bans {
 		if ban.Hostmask == hostmask {
 			foundBan = ban
@@ -46,6 +55,9 @@ func (tbmgr *TemporaryBanManager) Get(hostmask string) (foundBan TemporaryBan, o
 }
 
 func (tbmgr *TemporaryBanManager) Add(ban TemporaryBan) error {
+	tbmgr.dataSync.Lock()
+	defer tbmgr.dataSync.Unlock()
+
 	if _, ok := tbmgr.Get(ban.Hostmask); ok {
 		return ErrHostmaskAlreadyBanned
 	}
@@ -63,6 +75,7 @@ func (tbmgr *TemporaryBanManager) handleBan(banPtr *TemporaryBan) {
 	go func() {
 		select {
 		case <-ban.WaitUntilExpired(): // expired
+			tbmgr.dataSync.Lock()
 			close(banRemovalTriggerChan)
 			for index, foundBan := range tbmgr.data.Bans {
 				if ban == foundBan {
@@ -73,12 +86,17 @@ func (tbmgr *TemporaryBanManager) handleBan(banPtr *TemporaryBan) {
 			tbmgr.onBanExpired(ban)
 
 		case _, _ = <-banRemovalTriggerChan: // manually removed
+			tbmgr.dataSync.Lock()
 		}
+		defer tbmgr.dataSync.Unlock()
 		delete(tbmgr.banRemovalTrigger, ban)
 	}()
 }
 
 func (tbmgr *TemporaryBanManager) Remove(hostmask string) (foundBan TemporaryBan, deleted bool) {
+	tbmgr.dataSync.Lock()
+	defer tbmgr.dataSync.Unlock()
+
 	if _, ok := tbmgr.Get(hostmask); ok {
 		for index, ban := range tbmgr.data.Bans {
 			if ban.Hostmask == hostmask {
@@ -96,11 +114,15 @@ func (tbmgr *TemporaryBanManager) Remove(hostmask string) (foundBan TemporaryBan
 func NewTemporaryBanManager() *TemporaryBanManager {
 	return &TemporaryBanManager{
 		data:              new(TemporaryBanExport),
+		dataSync:          &sync.RWMutex{},
 		banRemovalTrigger: make(map[TemporaryBan]chan interface{}),
 	}
 }
 
 func (tbmgr *TemporaryBanManager) Import(r io.Reader) error {
+	tbmgr.dataSync.Lock()
+	defer tbmgr.dataSync.Unlock()
+
 	decoder := gob.NewDecoder(r)
 
 	var exportVersion uint64
@@ -132,6 +154,9 @@ func (tbmgr *TemporaryBanManager) Import(r io.Reader) error {
 }
 
 func (tbmgr *TemporaryBanManager) Export(w io.Writer) error {
+	tbmgr.dataSync.RLock()
+	defer tbmgr.dataSync.RUnlock()
+
 	encoder := gob.NewEncoder(w)
 
 	if err := encoder.Encode(currentExportVersion); err != nil {
