@@ -57,6 +57,9 @@ type Config struct {
 	// bot when it joins channels on invitation.
 	Channels []string "Channels"
 
+	// Old hostmasks from which to migrate old leftover bans.
+	OldHostmasks []string "OldHostmasks"
+
 	// The server to connect to.
 	Server ServerConfig "Server"
 
@@ -116,6 +119,11 @@ func (c Config) Validate() error {
 	// Channels
 	if c.Channels == nil {
 		c.Channels = []string{}
+	}
+
+	// OldHostmasks
+	if c.OldHostmasks == nil {
+		c.OldHostmasks = []string{}
 	}
 
 	return nil

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -169,7 +170,25 @@ func (p *Plugin) dumpBans(target string) {
 	for _, ban := range banlist {
 		if ban.Nick != p.bot.Me().Nick {
 			// Not a ban from us (going by the nickname at least)
-			continue
+			isOldHostmask := false
+			for _, hostmask := range p.OldHostmasks {
+				// TODO - Test this implementation
+				hostmask = regexp.QuoteMeta(hostmask)
+				hostmask = strings.Replace(hostmask, "\\*", ".*", -1)
+				hostmask = strings.Replace(hostmask, "\\?", ".?", -1)
+				if matched, err := regexp.MatchString(hostmask, ban.Src); matched {
+					isOldHostmask = true
+					break
+				} else if err != nil {
+					logging.Error("vpnbot.Plugin: dumpBans regular expression failed: %v",
+						err)
+					break
+				}
+			}
+			if !isOldHostmask {
+				// Not a ban from an old hostmask either
+				continue
+			}
 		}
 
 		if _, ok := tbmgr.Get(ban.Hostmask); ok {
