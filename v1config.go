@@ -85,8 +85,7 @@ func (c V1Config) Migrate() (cfg Config) {
 
 	// Server
 	cfg.Server.Address = fmt.Sprintf("%v:%v", c.Network.Host, c.Network.Port)
-	cfg.Server.Password = cfg.Server.Password
-	cfg.Server.SSL = cfg.Server.SSL
+	cfg.Server.Password = c.IRC.Pass
 
 	return
 }
