@@ -75,20 +75,11 @@ func (tbmgr *TemporaryBanManager) handleBan(banPtr *TemporaryBan) {
 	go func() {
 		select {
 		case <-ban.WaitUntilExpired(): // expired
-			tbmgr.dataSync.Lock()
-			close(banRemovalTriggerChan)
-			for index, foundBan := range tbmgr.data.Bans {
-				if ban == foundBan {
-					tbmgr.data.Bans = append(tbmgr.data.Bans[0:index], tbmgr.data.Bans[index+1:]...)
-					break
-				}
-			}
+			ban, _ := tbmgr.Remove(ban.Hostmask)
 			tbmgr.onBanExpired(ban)
 
 		case _, _ = <-banRemovalTriggerChan: // manually removed
-			tbmgr.dataSync.Lock()
 		}
-		defer tbmgr.dataSync.Unlock()
 		delete(tbmgr.banRemovalTrigger, ban)
 	}()
 }
