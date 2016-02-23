@@ -19,7 +19,7 @@ import (
 )
 
 var nonWordCharsRegex = regexp.MustCompile("\\W")
-var maskedAddrRegex = regexp.MustCompile("Rizon\\-[A-F0-9]{8}\\..+\\.[A-Za-z]")
+var maskedAddrRegex = regexp.MustCompile("Rizon\\-[A-F0-9]{8}\\..+\\.[A-Za-z]|[0-9A-F]{8}\\.[0-9A-F]{8}\\.[0-9A-F]{8}\\.IP")
 
 type Plugin struct {
 	bot            bot.Bot
