@@ -1,4 +1,4 @@
-FROM golang:1.5.3-alpine
+FROM golang:1.6.0-alpine
 MAINTAINER Carl Kittelberger <icedream@icedream.pw>
 
 WORKDIR /go/src/github.com/icedream/vpnbot
