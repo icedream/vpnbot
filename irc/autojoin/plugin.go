@@ -3,9 +3,12 @@ package autojoin
 import (
 	"time"
 
+	"strings"
+
 	"github.com/StalkR/goircbot/bot"
 	"github.com/fluffle/goirc/client"
 	"github.com/fluffle/goirc/logging"
+	"github.com/icedream/vpnbot/irc/mode"
 )
 
 type Plugin struct {
@@ -13,7 +16,7 @@ type Plugin struct {
 }
 
 // Creates a new plugin instance.
-func New(b bot.Bot) *Plugin {
+func New(b bot.Bot, modePlugin *mode.Plugin) *Plugin {
 	plugin := &Plugin{
 		bot: b,
 	}
@@ -25,10 +28,11 @@ func New(b bot.Bot) *Plugin {
 				return
 			}
 			channel := line.Args[1]
-			joinChan := make(chan interface{})
+			joinChan := make(chan interface{}, 1)
+			modeChan := make(chan interface{}, 1)
 
 			go func() {
-				defer conn.HandleFunc("join",
+				joinHandler := conn.HandleFunc(client.JOIN,
 					func(conn *client.Conn, line *client.Line) {
 						// Is this us joining somewhere?
 						if line.Nick != conn.Me().Nick {
@@ -47,21 +51,52 @@ func New(b bot.Bot) *Plugin {
 
 						// Yup, we're done here
 						joinChan <- struct{}{}
-					}).Remove()
+					})
+				modeHandler := modePlugin.HandleFunc("*",
+					func(e *mode.ModeChangeEvent) {
+						if e.Action != mode.ModeChangeAction_Added {
+							return
+						}
+
+						switch e.Mode {
+						case 'h', 'o', 'a', 'q':
+							if !strings.EqualFold(e.Target, channel) {
+								return // Not wanted channel
+							}
+							if e.Argument != conn.Me().Nick {
+								return // Not for us
+							}
+							modeChan <- struct{}{}
+						}
+					})
 
 				select {
-				case <-time.After(10 * time.Second):
+				case <-time.After(30 * time.Second):
+					joinHandler.Remove()
+
 					// Oops, we timed out
 					logging.Warn("Timed out while waiting for us to join %v",
 						channel)
 					return
 				case <-joinChan:
+					joinHandler.Remove()
 				}
 
 				// We have joined successfully, let's send our hello message!
 				b.Privmsg(channel, "Hi, I'm vpn, I automatically get rid of bad "+
 					"IP-changing ban evading bots! I need half-op (+h/%) to do "+
 					"this properly, thank you!")
+
+				select {
+				case <-time.After(30 * time.Minute):
+					modeHandler.Remove()
+
+					// We didn't get usable permissions in 30 minutes, leave channel
+					b.Part(channel, "Got no permissions, leaving.")
+					return
+				case <-modeChan:
+					modeHandler.Remove()
+				}
 			}()
 
 			// Join and wait until joined
@@ -72,6 +107,6 @@ func New(b bot.Bot) *Plugin {
 }
 
 // Registers this plugin with the bot.
-func Register(b bot.Bot) *Plugin {
-	return New(b)
+func Register(b bot.Bot, modePlugin *mode.Plugin) *Plugin {
+	return New(b, modePlugin)
 }

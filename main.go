@@ -171,7 +171,7 @@ func main() {
 
 	default: // Run normally
 		// Load plugins
-		autojoin.Register(b)
+		autojoin.Register(b, modePlugin)
 		adminplugin.Register(b, loadedConfiguration.Admins)
 		bots.Register(b, isupportPlugin)
 		tempbanPlugin := tempban.Register(b, isupportPlugin, modePlugin)
