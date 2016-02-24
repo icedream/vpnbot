@@ -225,7 +225,7 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 		botNick := line.Nick
 
 		nobotActivityChan := make(chan string)
-		defer plugin.bot.HandleFunc("privmsg",
+		defer plugin.bot.HandleFunc(client.PRIVMSG,
 			func(conn *client.Conn, line *client.Line) {
 				if line.Nick != botNick {
 					return
@@ -233,7 +233,7 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 
 				nobotActivityChan <- "User sent a message"
 			}).Remove()
-		defer plugin.bot.HandleFunc("noticed",
+		defer plugin.bot.HandleFunc(client.NOTICE,
 			func(conn *client.Conn, line *client.Line) {
 				if line.Nick != botNick {
 					return
@@ -241,7 +241,7 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 
 				nobotActivityChan <- "User sent a notice"
 			}).Remove()
-		defer plugin.bot.HandleFunc("part",
+		defer plugin.bot.HandleFunc(client.PART,
 			func(conn *client.Conn, line *client.Line) {
 				if line.Nick != botNick {
 					return
@@ -249,7 +249,7 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 
 				nobotActivityChan <- "User left"
 			}).Remove()
-		defer plugin.bot.HandleFunc("quit",
+		defer plugin.bot.HandleFunc(client.QUIT,
 			func(conn *client.Conn, line *client.Line) {
 				if line.Nick != botNick {
 					return
