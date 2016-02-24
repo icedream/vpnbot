@@ -304,8 +304,8 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 		// Count of channels at least 48
 		if len(info.Channels) < 48 {
 			logging.Debug(
-				"vpnbot.Plugin: %v is not in a high amount of channels, skipping.",
-				line.Nick)
+				"vpnbot.Plugin: %v is only in %v channels, skipping.",
+				line.Nick, len(info.Channels))
 			return
 		}
 
