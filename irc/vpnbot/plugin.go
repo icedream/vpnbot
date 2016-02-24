@@ -268,8 +268,8 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 				}
 
 				if len(line.Args) > 0 {
-					switch line.Args[0] {
-					case "Excess flood":
+					switch {
+					case strings.EqualFold(line.Args[0], "excess flood"):
 						// If this was an excess flood, consider it spam that should
 						// be good to ban anyways
 						nobotActivityChan <- "Excess flood, banning early"
