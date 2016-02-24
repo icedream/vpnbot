@@ -21,7 +21,6 @@ import (
 	adminplugin "github.com/StalkR/goircbot/plugins/admin"
 	"github.com/icedream/vpnbot/irc/autojoin"
 	"github.com/icedream/vpnbot/irc/bots"
-	"github.com/icedream/vpnbot/irc/dumptempban"
 	"github.com/icedream/vpnbot/irc/isupport"
 	"github.com/icedream/vpnbot/irc/mode"
 	"github.com/icedream/vpnbot/irc/nickserv"
@@ -44,8 +43,6 @@ var migratePath = flag.String("migrate", "",
 	"If given with a path, will migrate from version 1 of VPN bot to the new configuration format.")
 var generateDefault = flag.Bool("generate", false,
 	"Generates a default configuration and saves it at the path given via -config.")
-var makeTempBans = flag.Bool("maketempbans", false,
-	"Causes the bot to only connect shortly to dump all its previously set bans to temporary bans. This is useful for V1 migration.")
 
 // Logger
 var logger glogging.GLogger
@@ -138,131 +135,97 @@ func main() {
 	nickservPlugin.Username = loadedConfiguration.NickServ.Username
 	nickservPlugin.Password = loadedConfiguration.NickServ.Password
 	nickservPlugin.Channels = loadedConfiguration.Channels
+	autojoin.Register(b, modePlugin)
+	adminplugin.Register(b, loadedConfiguration.Admins)
+	bots.Register(b, isupportPlugin)
+	tempbanPlugin := tempban.Register(b, isupportPlugin, modePlugin)
+	tempbanPlugin.OldHostmasks = loadedConfiguration.OldHostmasks
+	whoisPlugin := whois.Register(b, isupportPlugin)
+	vpnbotPlugin := vpnbot.Register(b, whoisPlugin, isupportPlugin,
+		tempbanPlugin, nickservPlugin)
+	vpnbotPlugin.Admins = loadedConfiguration.Admins
 
-	switch {
-	case *makeTempBans: // Run in tempban dumping mode
-		// Prepare channels to let us know about dumped bans
-		doneChan := make(map[string]chan interface{})
-		for _, channel := range loadedConfiguration.Channels {
-			doneChan[strings.ToLower(channel)] = make(chan interface{}, 1)
-		}
+	// This is to update the configuration when the bot joins channels
+	b.HandleFunc("join",
+		func(c *client.Conn, line *client.Line) {
+			// Arguments: [ <channel> ]
 
-		// Load the tempban dumping plugin
-		dumptempbanPlugin := dumptempban.Register(b, isupportPlugin, modePlugin)
-		dumptempbanPlugin.DumpedBansFunc = func(target string, num int, err error) {
-			if err != nil {
-				logging.Error("Failed to dump bans for %v: %v", target, err)
-			} else {
-				logging.Info("Dumped %v bans for %v successfully.", num, target)
+			// Make sure this is about us
+			if line.Nick != c.Me().Nick {
+				return
 			}
-			if done, ok := doneChan[strings.ToLower(target)]; ok {
-				done <- nil
+
+			// I don't think method calls are a good idea in a loop
+			channel := line.Target()
+
+			// See if we already had this channel saved
+			for _, savedChannel := range loadedConfiguration.Channels {
+				if strings.EqualFold(savedChannel, channel) {
+					return // Channel already saved
+				}
 			}
-		}
 
-		// Start up the bot asynchronously
-		go b.Run()
+			// Store this channel
+			logger.Info("Adding %v to configured channels", channel)
+			loadedConfiguration.Channels = append(
+				loadedConfiguration.Channels, channel)
 
-		// Wait for all channels to be done
-		for _, done := range doneChan {
-			<-done
-		}
-		b.Quit("Ban dumping done.")
+			// And save to configuration file!
+			loadedConfiguration.Save(*configPath)
+		})
+	b.HandleFunc("kick",
+		func(c *client.Conn, line *client.Line) {
+			// Arguments: [ <channel>, <nick>, <reason> ]
 
-	default: // Run normally
-		// Load plugins
-		autojoin.Register(b, modePlugin)
-		adminplugin.Register(b, loadedConfiguration.Admins)
-		bots.Register(b, isupportPlugin)
-		tempbanPlugin := tempban.Register(b, isupportPlugin, modePlugin)
-		tempbanPlugin.OldHostmasks = loadedConfiguration.OldHostmasks
-		whoisPlugin := whois.Register(b, isupportPlugin)
-		vpnbotPlugin := vpnbot.Register(b, whoisPlugin, isupportPlugin,
-			tempbanPlugin, nickservPlugin)
-		vpnbotPlugin.Admins = loadedConfiguration.Admins
+			// Make sure this is about us
+			if line.Args[1] != c.Me().Nick {
+				return
+			}
 
-		// This is to update the configuration when the bot joins channels
-		b.HandleFunc("join",
-			func(c *client.Conn, line *client.Line) {
-				// Arguments: [ <channel> ]
+			// I don't think method calls are a good idea in a loop
+			channel := line.Target()
 
-				// Make sure this is about us
-				if line.Nick != c.Me().Nick {
+			for index, savedChannel := range loadedConfiguration.Channels {
+				if strings.EqualFold(savedChannel, channel) {
+					// Delete the channel
+					logger.Info("Removing %v from configured channels", savedChannel)
+					loadedConfiguration.Channels = append(
+						loadedConfiguration.Channels[0:index],
+						loadedConfiguration.Channels[index+1:]...)
+
+					// And save to configuration file!
+					loadedConfiguration.Save(*configPath)
 					return
 				}
+			}
+		})
+	b.HandleFunc("part",
+		func(c *client.Conn, line *client.Line) {
+			// Arguments: [ <channel> (, <reason>) ]
 
-				// I don't think method calls are a good idea in a loop
-				channel := line.Target()
+			// Make sure this is about us
+			if line.Nick != c.Me().Nick {
+				return
+			}
 
-				// See if we already had this channel saved
-				for _, savedChannel := range loadedConfiguration.Channels {
-					if strings.EqualFold(savedChannel, channel) {
-						return // Channel already saved
-					}
-				}
+			// I don't think method calls are a good idea in a loop
+			channel := line.Target()
 
-				// Store this channel
-				logger.Info("Adding %v to configured channels", channel)
-				loadedConfiguration.Channels = append(
-					loadedConfiguration.Channels, channel)
+			for index, savedChannel := range loadedConfiguration.Channels {
+				if strings.EqualFold(savedChannel, channel) {
+					// Delete the channel
+					logger.Info("Removing %v from configured channels", savedChannel)
+					loadedConfiguration.Channels = append(
+						loadedConfiguration.Channels[0:index],
+						loadedConfiguration.Channels[index+1:]...)
 
-				// And save to configuration file!
-				loadedConfiguration.Save(*configPath)
-			})
-		b.HandleFunc("kick",
-			func(c *client.Conn, line *client.Line) {
-				// Arguments: [ <channel>, <nick>, <reason> ]
-
-				// Make sure this is about us
-				if line.Args[1] != c.Me().Nick {
+					// And save to configuration file!
+					loadedConfiguration.Save(*configPath)
 					return
 				}
+			}
+		})
 
-				// I don't think method calls are a good idea in a loop
-				channel := line.Target()
-
-				for index, savedChannel := range loadedConfiguration.Channels {
-					if strings.EqualFold(savedChannel, channel) {
-						// Delete the channel
-						logger.Info("Removing %v from configured channels", savedChannel)
-						loadedConfiguration.Channels = append(
-							loadedConfiguration.Channels[0:index],
-							loadedConfiguration.Channels[index+1:]...)
-
-						// And save to configuration file!
-						loadedConfiguration.Save(*configPath)
-						return
-					}
-				}
-			})
-		b.HandleFunc("part",
-			func(c *client.Conn, line *client.Line) {
-				// Arguments: [ <channel> (, <reason>) ]
-
-				// Make sure this is about us
-				if line.Nick != c.Me().Nick {
-					return
-				}
-
-				// I don't think method calls are a good idea in a loop
-				channel := line.Target()
-
-				for index, savedChannel := range loadedConfiguration.Channels {
-					if strings.EqualFold(savedChannel, channel) {
-						// Delete the channel
-						logger.Info("Removing %v from configured channels", savedChannel)
-						loadedConfiguration.Channels = append(
-							loadedConfiguration.Channels[0:index],
-							loadedConfiguration.Channels[index+1:]...)
-
-						// And save to configuration file!
-						loadedConfiguration.Save(*configPath)
-						return
-					}
-				}
-			})
-
-		// Run the bot
-		b.Run()
-	}
+	// Run the bot
+	b.Run()
 }
