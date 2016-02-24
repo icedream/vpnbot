@@ -3,6 +3,7 @@ package whois
 import (
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/StalkR/goircbot/bot"
@@ -77,7 +78,7 @@ func (p *Plugin) WhoIs(nick string) (resp *WhoIsResponse, err error) {
 			if newResp.Channels == nil {
 				newResp.Channels = map[string]WhoIsChannelMode{}
 			}
-			for _, prefixedChannel := range line.Args[2:] {
+			for _, prefixedChannel := range strings.Split(line.Args[2], " ") {
 				prefixes, channel := isupport.SplitIrcPrefix(prefixedChannel, availablePrefixes.Symbols)
 				var prefix WhoIsChannelMode = WhoIsChannelModeNone
 				if len(prefixes) > 0 {
