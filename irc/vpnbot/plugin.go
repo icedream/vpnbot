@@ -227,25 +227,32 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 		nobotActivityChan := make(chan string)
 		defer plugin.bot.HandleFunc("privmsg",
 			func(conn *client.Conn, line *client.Line) {
-				if line.Nick == botNick {
-					nobotActivityChan <- "User sent a message"
+				if line.Nick != botNick {
+					return
 				}
+
+				nobotActivityChan <- "User sent a message"
 			}).Remove()
 		defer plugin.bot.HandleFunc("noticed",
 			func(conn *client.Conn, line *client.Line) {
-				if line.Nick == botNick {
-					nobotActivityChan <- "User sent a notice"
+				if line.Nick != botNick {
+					return
 				}
+
+				nobotActivityChan <- "User sent a notice"
 			}).Remove()
 		defer plugin.bot.HandleFunc("part",
 			func(conn *client.Conn, line *client.Line) {
-				if line.Nick == botNick {
-					nobotActivityChan <- "User left"
+				if line.Nick != botNick {
+					return
 				}
+
+				nobotActivityChan <- "User left"
 			}).Remove()
-		defer plugin.bot.HandleFunc("part",
+		defer plugin.bot.HandleFunc("quit",
 			func(conn *client.Conn, line *client.Line) {
-				if line.Nick == botNick {
+				if line.Nick != botNick {
+					return
 				}
 
 				if len(line.Args) > 0 {
@@ -258,6 +265,7 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 						// TODO - Ramp up/down the duration with increasing/decreasing activity of the bots
 						plugin.banGlobal(plugin.generateBan(line.Nick, banmask,
 							"Instant excess flood", 2*24*time.Hour))
+						nobotActivityChan <- "Bot excess flooded"
 					default:
 						nobotActivityChan <- "User quit normally"
 					}
