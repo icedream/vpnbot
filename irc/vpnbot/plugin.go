@@ -380,8 +380,6 @@ func (plugin *Plugin) banGlobal(bans ...tempban.TemporaryBan) {
 				if err != nil {
 					logging.Warn("Couldn't ban %v from %v: %v", ban.Nick, channel,
 						err.Error())
-					plugin.bot.Privmsg(channel, fmt.Sprintf("I can't ban %v. %v.",
-						ban.Nick, err.Error()))
 				}
 			}
 		}(channel)
