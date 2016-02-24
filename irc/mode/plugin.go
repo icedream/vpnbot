@@ -80,6 +80,10 @@ func New(b bot.Bot, isupportPlugin *isupport.Plugin) *Plugin {
 			if !ok {
 				return // TODO use some decent defaults
 			}
+			prefixes, ok := isupportPlugin.Supports().Prefix()
+			if !ok {
+				return // TODO use some decent defaults
+			}
 			for _, mode := range modes {
 				switch mode {
 				case '-':
@@ -100,32 +104,51 @@ func New(b bot.Bot, isupportPlugin *isupport.Plugin) *Plugin {
 					}
 
 					if isChannel {
-						// Find the mode in ISupports
-						for _, knownMode := range knownModes {
-							if knownMode.Mode != mode {
+						// Find the mode in ISupports prefixes
+						for _, prefix := range prefixes.Letters {
+							if prefix != mode {
 								continue
 							}
 
-							switch knownMode.Type {
-							case isupport.ChanModeType_List,
-								isupport.ChanModeType_Setting:
-								// Always has a parameter
-								arg, ok := getParam()
-								if !ok {
-									return // invalid syntax
+							// Always has a parameter
+							arg, ok := getParam()
+							if !ok {
+								return // invalid syntax
+							}
+							modeChange.HasArgument = true
+							modeChange.Argument = arg
+						}
+
+						// Find the mode in ISupports channel modes
+						if !modeChange.HasArgument {
+							for _, knownMode := range knownModes {
+								if knownMode.Mode != mode {
+									continue
 								}
-								modeChange.Argument = arg
-							case isupport.ChanModeType_Setting_ParamWhenSet:
-								// Only has parameter when set
-								if action == ModeChangeAction_Added {
+
+								switch knownMode.Type {
+								case isupport.ChanModeType_List,
+									isupport.ChanModeType_Setting:
+									// Always has a parameter
 									arg, ok := getParam()
 									if !ok {
 										return // invalid syntax
 									}
+									modeChange.HasArgument = true
 									modeChange.Argument = arg
+								case isupport.ChanModeType_Setting_ParamWhenSet:
+									// Only has parameter when set
+									if action == ModeChangeAction_Added {
+										arg, ok := getParam()
+										if !ok {
+											return // invalid syntax
+										}
+										modeChange.HasArgument = true
+										modeChange.Argument = arg
+									}
+								case isupport.ChanModeType_Setting_NoParam:
+									// No parameter
 								}
-							case isupport.ChanModeType_Setting_NoParam:
-								// No parameter
 							}
 						}
 					}
