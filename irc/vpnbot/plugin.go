@@ -241,6 +241,18 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 
 				nobotActivityChan <- "User sent a notice"
 			}).Remove()
+		defer plugin.bot.HandleFunc(client.MODE,
+			func(conn *client.Conn, line *client.Line) {
+				if len(line.Args) < 1 {
+					return
+				}
+
+				if line.Args[0] != botNick {
+					return
+				}
+
+				nobotActivityChan <- "User received a mode (auto-op?)"
+			}).Remove()
 		defer plugin.bot.HandleFunc(client.PART,
 			func(conn *client.Conn, line *client.Line) {
 				if line.Nick != botNick {
