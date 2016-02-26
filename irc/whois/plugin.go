@@ -180,7 +180,7 @@ func (p *Plugin) WhoIs(nick string) (resp *WhoIsResponse, err error) {
 	select {
 	case <-time.After(30 * time.Second):
 		err = errors.New("Request timed out")
-	case <-whoisCompletionChan:
+	case _, _ = <-whoisCompletionChan:
 	}
 
 	if err == nil {
