@@ -30,6 +30,8 @@ const (
 	ircErrNoSuchNick = "401"
 	// ":<prefix> 431 <menick> <nickname> :No nickname given"
 	ircErrNoNickGiven = "431"
+	// ":<prefix> 263 <menick> :Server load is temporarily too heavy. Please wait a while and try again."
+	ircErrUnderHeavyLoad = "263"
 )
 
 // Some known channel modes.
@@ -175,6 +177,11 @@ func (p *Plugin) WhoIs(nick string) (resp *WhoIsResponse, err error) {
 			err = ErrNoSuchNick
 			close(whoisCompletionChan)
 		}).Remove()
+	defer p.bot.HandleFunc(ircErrUnderHeavyLoad,
+		func(conn *client.Conn, line *client.Line) {
+			err = ErrServerUnderHeavyLoad
+			close(whoisCompletionChan)
+		})
 
 	p.bot.Conn().Whois(nick)
 	select {
