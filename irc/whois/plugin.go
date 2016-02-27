@@ -159,7 +159,10 @@ func (p *Plugin) WhoIs(nick string) (resp *WhoIsResponse, err error) {
 			if line.Args[1] != nick {
 				return
 			}
-			close(whoisCompletionChan)
+			if whoisCompletionChan != nil {
+				close(whoisCompletionChan)
+			}
+			whoisCompletionChan = nil
 		}).Remove()
 	defer p.bot.HandleFunc(ircErrNoNickGiven,
 		func(conn *client.Conn, line *client.Line) {
@@ -167,7 +170,10 @@ func (p *Plugin) WhoIs(nick string) (resp *WhoIsResponse, err error) {
 				return
 			}
 			err = ErrInvalidNick
-			close(whoisCompletionChan)
+			if whoisCompletionChan != nil {
+				close(whoisCompletionChan)
+			}
+			whoisCompletionChan = nil
 		}).Remove()
 	defer p.bot.HandleFunc(ircErrNoSuchNick,
 		func(conn *client.Conn, line *client.Line) {
@@ -175,12 +181,18 @@ func (p *Plugin) WhoIs(nick string) (resp *WhoIsResponse, err error) {
 				return
 			}
 			err = ErrNoSuchNick
-			close(whoisCompletionChan)
+			if whoisCompletionChan != nil {
+				close(whoisCompletionChan)
+			}
+			whoisCompletionChan = nil
 		}).Remove()
 	defer p.bot.HandleFunc(ircErrUnderHeavyLoad,
 		func(conn *client.Conn, line *client.Line) {
 			err = ErrServerUnderHeavyLoad
-			close(whoisCompletionChan)
+			if whoisCompletionChan != nil {
+				close(whoisCompletionChan)
+			}
+			whoisCompletionChan = nil
 		})
 
 	p.bot.Conn().Whois(nick)
