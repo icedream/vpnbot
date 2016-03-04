@@ -232,7 +232,11 @@ func (p *Plugin) Bans(target string) (banlist []Ban, err error) {
 		}).Remove()
 
 	p.bot.Conn().Mode(target, "+b")
-	err = <-doneChan
+	select {
+	case <-time.After(30 * time.Second):
+		err = ErrTimeout
+	case err = <-doneChan:
+	}
 	return
 }
 
