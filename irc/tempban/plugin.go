@@ -165,7 +165,7 @@ func (p *Plugin) dumpBans(target string) {
 	// Fetch ban list
 	banlist, err := p.mode.Bans(target)
 	if err != nil {
-		logging.Warn("Could not fetch ban list, old bans won't get handled")
+		logging.Warn("%v: Could not fetch ban list, old bans won't get handled (%v)", target, err)
 		return
 	}
 
