@@ -39,6 +39,10 @@ func New(b bot.Bot, isupportPlugin *isupport.Plugin, modePlugin *mode.Plugin) *P
 	}
 
 	modePlugin.HandleFunc("-b", func(e *mode.ModeChangeEvent) {
+		if e.Nick == b.Me().Nick {
+			return // this is us
+		}
+
 		if ok, _, _ := isupportPlugin.IsChannel(e.Target); !ok {
 			return // not a channel
 		}
