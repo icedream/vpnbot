@@ -76,6 +76,8 @@ func (tbmgr *TemporaryBanManager) Add(ban TemporaryBan) error {
 func (tbmgr *TemporaryBanManager) handleBan(banPtr *TemporaryBan) {
 	ban := *banPtr
 	banRemovalTriggerChan := make(chan interface{})
+	tbmgr.dataSync.Lock()
+	defer tbmgr.dataSync.Unlock()
 	tbmgr.banRemovalTrigger[ban] = banRemovalTriggerChan
 	go func() {
 		select {
@@ -85,6 +87,8 @@ func (tbmgr *TemporaryBanManager) handleBan(banPtr *TemporaryBan) {
 
 		case _, _ = <-banRemovalTriggerChan: // manually removed
 		}
+		tbmgr.dataSync.Lock()
+		defer tbmgr.dataSync.Unlock()
 		delete(tbmgr.banRemovalTrigger, ban)
 	}()
 }
