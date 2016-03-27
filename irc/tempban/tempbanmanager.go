@@ -5,7 +5,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/icedream/vpnbot/debug/sync"
+	"sync"
 
 	"github.com/fluffle/goirc/logging"
 )
