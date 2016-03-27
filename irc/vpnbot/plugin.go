@@ -222,12 +222,13 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 	}
 
 	go func() {
-		botNick := line.Nick
+		originalSrc := line.Src
+		originalNick := line.Nick
 
 		nobotActivityChan := make(chan string)
 		defer plugin.bot.HandleFunc(client.PRIVMSG,
 			func(conn *client.Conn, line *client.Line) {
-				if line.Nick != botNick {
+				if originalSrc != line.Src {
 					return
 				}
 
@@ -235,7 +236,7 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 			}).Remove()
 		defer plugin.bot.HandleFunc(client.NOTICE,
 			func(conn *client.Conn, line *client.Line) {
-				if line.Nick != botNick {
+				if originalSrc != line.Src {
 					return
 				}
 
@@ -247,7 +248,7 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 					return
 				}
 
-				if line.Args[0] != botNick {
+				if line.Args[0] != originalNick {
 					return
 				}
 
@@ -255,7 +256,7 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 			}).Remove()
 		defer plugin.bot.HandleFunc(client.PART,
 			func(conn *client.Conn, line *client.Line) {
-				if line.Nick != botNick {
+				if originalSrc != line.Src {
 					return
 				}
 
@@ -263,7 +264,7 @@ func (plugin *Plugin) OnJoin(conn *client.Conn, line *client.Line) {
 			}).Remove()
 		defer plugin.bot.HandleFunc(client.QUIT,
 			func(conn *client.Conn, line *client.Line) {
-				if line.Nick != botNick {
+				if originalSrc != line.Src {
 					return
 				}
 
